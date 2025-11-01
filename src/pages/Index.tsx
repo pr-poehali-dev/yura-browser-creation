@@ -2,12 +2,20 @@ import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 export default function Index() {
+  const [showInstaller, setShowInstaller] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
+  const [installed, setInstalled] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  
   const [chatMessages, setChatMessages] = useState([
     { role: 'ai', text: 'Привет! Я встроенный AI-ассистент. Чем могу помочь?' }
   ]);
   const [inputValue, setInputValue] = useState('');
+  const [browserUrl, setBrowserUrl] = useState('https://google.com');
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -17,6 +25,33 @@ export default function Index() {
       { role: 'ai', text: 'Отличный вопрос! Я анализирую информацию и помогу вам с этим.' }
     ]);
     setInputValue('');
+  };
+
+  const startInstallation = () => {
+    setShowInstaller(true);
+    setInstalling(true);
+    setInstallProgress(0);
+    
+    const interval = setInterval(() => {
+      setInstallProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setInstalling(false);
+          setInstalled(true);
+          setTimeout(() => {
+            setBrowserOpen(true);
+          }, 800);
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 50);
+  };
+
+  const handleBrowserNavigate = () => {
+    if (browserUrl) {
+      window.open(browserUrl, '_blank');
+    }
   };
 
   return (
@@ -36,7 +71,10 @@ export default function Index() {
             <a href="#community" className="hover:text-[#00D9FF] transition-colors">Сообщество</a>
           </div>
           
-          <Button className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 text-white border-0">
+          <Button 
+            onClick={startInstallation}
+            className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 text-white border-0"
+          >
             Скачать
           </Button>
         </div>
@@ -59,7 +97,11 @@ export default function Index() {
                 Революционный браузер с искусственным интеллектом, который помогает вам работать быстрее, эффективнее и безопаснее
               </p>
               <div className="flex gap-4 pt-4">
-                <Button size="lg" className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 text-white border-0 px-8 glow-border">
+                <Button 
+                  size="lg" 
+                  onClick={startInstallation}
+                  className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 text-white border-0 px-8 glow-border"
+                >
                   <Icon name="Download" size={20} className="mr-2" />
                   Скачать бесплатно
                 </Button>
@@ -304,6 +346,155 @@ export default function Index() {
           </div>
         </div>
       </footer>
+
+      {showInstaller && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <Card className="glass border-[#00D9FF]/30 p-8 max-w-2xl w-full animate-scale-in">
+            {!browserOpen ? (
+              <>
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-4 glow-border">
+                    <Icon name="Download" size={40} className="text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-2">
+                    {installing ? 'Установка NovaBrowser' : installed ? 'Установка завершена!' : 'Готов к установке'}
+                  </h2>
+                  <p className="text-gray-400">
+                    {installing ? 'Пожалуйста, подождите...' : installed ? 'Браузер успешно установлен' : 'Начните установку'}
+                  </p>
+                </div>
+
+                {installing && (
+                  <div className="space-y-4 mb-6">
+                    <Progress value={installProgress} className="h-2" />
+                    <div className="flex justify-between text-sm text-gray-400">
+                      <span>Прогресс установки</span>
+                      <span>{installProgress}%</span>
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-400">
+                      {installProgress > 10 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Проверка системы</div>}
+                      {installProgress > 30 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Распаковка файлов</div>}
+                      {installProgress > 60 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Установка компонентов</div>}
+                      {installProgress > 90 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Настройка браузера</div>}
+                    </div>
+                  </div>
+                )}
+
+                {installed && (
+                  <div className="text-center">
+                    <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                      <Icon name="CheckCircle2" size={40} className="text-green-500" />
+                    </div>
+                    <p className="text-lg text-gray-300 mb-4">Браузер открывается...</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center">
+                      <Icon name="Sparkles" size={20} className="text-white" />
+                    </div>
+                    <span className="text-xl font-bold">NovaBrowser</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500 cursor-pointer" onClick={() => setBrowserOpen(false)}></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white/5 rounded-xl p-3 mb-4">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="text-white"
+                    onClick={() => setBrowserUrl('https://google.com')}
+                  >
+                    <Icon name="Home" size={18} />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-white">
+                    <Icon name="RefreshCw" size={18} />
+                  </Button>
+                  <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-lg px-4 py-2">
+                    <Icon name="Lock" size={16} className="text-green-500" />
+                    <input
+                      type="text"
+                      value={browserUrl}
+                      onChange={(e) => setBrowserUrl(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleBrowserNavigate()}
+                      className="flex-1 bg-transparent outline-none text-sm"
+                    />
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 border-0"
+                  >
+                    <Icon name="Sparkles" size={18} />
+                  </Button>
+                </div>
+
+                <div className="bg-white/5 rounded-xl p-8 min-h-[400px]">
+                  <div className="max-w-xl mx-auto text-center space-y-6">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-6">
+                      <Icon name="Sparkles" size={48} className="text-white" />
+                    </div>
+                    <h1 className="text-4xl font-bold">Добро пожаловать в NovaBrowser</h1>
+                    <p className="text-xl text-gray-400">Ваш умный браузер со встроенным AI-ассистентом готов к работе</p>
+                    
+                    <div className="grid grid-cols-2 gap-4 pt-6">
+                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
+                        <Icon name="Bookmark" size={32} className="text-[#00D9FF] mb-2" />
+                        <h3 className="font-semibold">Закладки</h3>
+                      </Card>
+                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
+                        <Icon name="History" size={32} className="text-[#8B5CF6] mb-2" />
+                        <h3 className="font-semibold">История</h3>
+                      </Card>
+                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
+                        <Icon name="Settings" size={32} className="text-[#00D9FF] mb-2" />
+                        <h3 className="font-semibold">Настройки</h3>
+                      </Card>
+                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
+                        <Icon name="Shield" size={32} className="text-[#8B5CF6] mb-2" />
+                        <h3 className="font-semibold">Защита</h3>
+                      </Card>
+                    </div>
+
+                    <div className="pt-6">
+                      <div className="flex items-center gap-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#8B5CF6]/10 border border-[#00D9FF]/30 rounded-xl p-4">
+                        <Icon name="Sparkles" size={24} className="text-[#00D9FF]" />
+                        <div className="text-left flex-1">
+                          <p className="font-semibold">AI-ассистент активен</p>
+                          <p className="text-sm text-gray-400">Нажмите Ctrl+K для быстрого доступа</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4">
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="glass border-[#00D9FF] text-white">
+                      <Icon name="Plus" size={16} className="mr-1" />
+                      Новая вкладка
+                    </Button>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="glass border-red-500 text-red-500 hover:bg-red-500/10"
+                    onClick={() => setShowInstaller(false)}
+                  >
+                    Закрыть браузер
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
