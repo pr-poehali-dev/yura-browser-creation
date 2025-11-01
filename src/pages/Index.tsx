@@ -1,14 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 export default function Index() {
-  const [showInstaller, setShowInstaller] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
-  const [installed, setInstalled] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   
   const [chatMessages, setChatMessages] = useState([
@@ -28,7 +26,6 @@ export default function Index() {
   };
 
   const startInstallation = () => {
-    setShowInstaller(true);
     setInstalling(true);
     setInstallProgress(0);
     
@@ -36,23 +33,361 @@ export default function Index() {
       setInstallProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          setInstalling(false);
-          setInstalled(true);
           setTimeout(() => {
+            setInstalling(false);
             setBrowserOpen(true);
-          }, 800);
+          }, 500);
           return 100;
         }
-        return prev + 2;
+        return prev + 3;
       });
-    }, 50);
+    }, 40);
   };
 
-  const handleBrowserNavigate = () => {
-    if (browserUrl) {
-      window.open(browserUrl, '_blank');
+  const [tabs, setTabs] = useState([
+    { id: 1, title: 'Новая вкладка', url: 'nova://newtab', active: true }
+  ]);
+  const [activeTab, setActiveTab] = useState(1);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiMessages, setAiMessages] = useState<{role: string, text: string}[]>([]);
+  const [aiInput, setAiInput] = useState('');
+
+  const addTab = () => {
+    const newTab = {
+      id: Date.now(),
+      title: 'Новая вкладка',
+      url: 'nova://newtab',
+      active: false
+    };
+    setTabs([...tabs.map(t => ({...t, active: false})), newTab]);
+    setActiveTab(newTab.id);
+  };
+
+  const closeTab = (id: number) => {
+    const newTabs = tabs.filter(t => t.id !== id);
+    if (newTabs.length === 0) {
+      setBrowserOpen(false);
+    } else {
+      setTabs(newTabs);
+      if (activeTab === id) {
+        setActiveTab(newTabs[0].id);
+      }
     }
   };
+
+  const handleAiSend = async () => {
+    if (!aiInput.trim()) return;
+    
+    const userMessage = aiInput;
+    setAiInput('');
+    setAiMessages([...aiMessages, { role: 'user', text: userMessage }]);
+    
+    setTimeout(() => {
+      const responses = [
+        'Конечно! Я могу помочь вам с этим вопросом. На основе анализа текущей страницы...',
+        'Отличный вопрос! Давайте я найду для вас актуальную информацию...',
+        'Я проанализировал контент и могу предложить следующее решение...',
+        'Интересная задача! Вот что я нашел по вашему запросу...'
+      ];
+      const response = responses[Math.floor(Math.random() * responses.length)];
+      setAiMessages(prev => [...prev, { role: 'ai', text: response }]);
+    }, 800);
+  };
+
+  useEffect(() => {
+    if (!browserOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowAiPanel(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [browserOpen]);
+
+  if (installing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] via-[#1a1f3a] to-[#0A0E27] text-white flex items-center justify-center p-6">
+        <Card className="glass border-[#00D9FF]/30 p-8 max-w-2xl w-full animate-scale-in">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-4 glow-border">
+              <Icon name="Download" size={40} className="text-white" />
+            </div>
+            <h2 className="text-3xl font-bold mb-2">Установка NovaBrowser</h2>
+            <p className="text-gray-400">Пожалуйста, подождите...</p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <Progress value={installProgress} className="h-2" />
+            <div className="flex justify-between text-sm text-gray-400">
+              <span>Прогресс установки</span>
+              <span>{installProgress}%</span>
+            </div>
+            <div className="space-y-2 text-sm text-gray-400">
+              {installProgress > 10 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Проверка системы</div>}
+              {installProgress > 30 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Распаковка файлов</div>}
+              {installProgress > 60 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Установка компонентов</div>}
+              {installProgress > 90 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Настройка браузера</div>}
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  if (browserOpen) {
+    return (
+      <div className="h-screen bg-[#0A0E27] text-white flex flex-col overflow-hidden">
+        {/* Browser Chrome */}
+        <div className="bg-[#0d1128] border-b border-white/10">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-2 pt-2">
+            {tabs.map(tab => (
+              <div
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`group flex items-center gap-2 px-4 py-2 rounded-t-lg cursor-pointer transition-all min-w-[200px] max-w-[250px] ${
+                  activeTab === tab.id
+                    ? 'bg-[#1a1f3a] border-t border-x border-[#00D9FF]/30'
+                    : 'bg-[#0d1128] hover:bg-[#0d1128]/80'
+                }`}
+              >
+                <Icon name="Globe" size={14} className="flex-shrink-0" />
+                <span className="flex-1 text-sm truncate">{tab.title}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                  className="opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded p-0.5 transition-opacity"
+                >
+                  <Icon name="X" size={14} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addTab}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <Icon name="Plus" size={16} />
+            </button>
+          </div>
+
+          {/* Address Bar */}
+          <div className="flex items-center gap-2 p-3">
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="ChevronLeft" size={18} />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="ChevronRight" size={18} />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="RefreshCw" size={16} />
+              </Button>
+            </div>
+
+            <div className="flex-1 flex items-center gap-2 bg-[#1a1f3a] border border-white/10 rounded-xl px-4 py-2 focus-within:border-[#00D9FF]/50 transition-colors">
+              <Icon name="Lock" size={16} className="text-green-500" />
+              <input
+                type="text"
+                value={browserUrl}
+                onChange={(e) => setBrowserUrl(e.target.value)}
+                placeholder="Введите URL или поисковый запрос..."
+                className="flex-1 bg-transparent outline-none text-sm"
+              />
+              <Button
+                size="sm"
+                onClick={() => setShowAiPanel(!showAiPanel)}
+                className={`h-7 px-3 ${
+                  showAiPanel
+                    ? 'bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6]'
+                    : 'bg-white/5 hover:bg-white/10'
+                } border-0`}
+              >
+                <Icon name="Sparkles" size={14} className="mr-1" />
+                AI
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="Star" size={16} />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="Download" size={16} />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-white h-8 w-8 p-0">
+                <Icon name="MoreVertical" size={16} />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Page Content */}
+          <div className="flex-1 bg-[#0A0E27] overflow-auto">
+            <div className="max-w-5xl mx-auto px-8 py-16">
+              <div className="text-center space-y-8">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-8 glow-border">
+                  <Icon name="Sparkles" size={64} className="text-white" />
+                </div>
+                
+                <h1 className="text-5xl font-bold mb-4">
+                  Добро пожаловать в
+                  <span className="block bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] bg-clip-text text-transparent mt-2">
+                    NovaBrowser
+                  </span>
+                </h1>
+                
+                <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                  Ваш умный браузер со встроенным AI-ассистентом готов к работе
+                </p>
+
+                <div className="grid md:grid-cols-3 gap-4 pt-8 max-w-3xl mx-auto">
+                  <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
+                    <Icon name="Bookmark" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
+                    <h3 className="font-bold mb-2">Закладки</h3>
+                    <p className="text-sm text-gray-400">Быстрый доступ к любимым сайтам</p>
+                  </Card>
+                  
+                  <Card className="glass border-white/10 p-6 hover:border-[#8B5CF6]/50 transition-all cursor-pointer group">
+                    <Icon name="History" size={40} className="text-[#8B5CF6] mb-4 group-hover:scale-110 transition-transform" />
+                    <h3 className="font-bold mb-2">История</h3>
+                    <p className="text-sm text-gray-400">Все ваши посещения</p>
+                  </Card>
+                  
+                  <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
+                    <Icon name="Settings" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
+                    <h3 className="font-bold mb-2">Настройки</h3>
+                    <p className="text-sm text-gray-400">Персонализация браузера</p>
+                  </Card>
+                </div>
+
+                <div className="pt-8">
+                  <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#8B5CF6]/10 border border-[#00D9FF]/30 rounded-xl p-6">
+                    <Icon name="Sparkles" size={32} className="text-[#00D9FF]" />
+                    <div className="text-left">
+                      <p className="font-bold text-lg">AI-ассистент активен</p>
+                      <p className="text-sm text-gray-400">Нажмите на кнопку AI в адресной строке или Ctrl+K</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
+                  {[
+                    { name: 'Google', icon: 'Search', url: 'google.com' },
+                    { name: 'YouTube', icon: 'Youtube', url: 'youtube.com' },
+                    { name: 'GitHub', icon: 'Github', url: 'github.com' },
+                    { name: 'ChatGPT', icon: 'MessageSquare', url: 'chat.openai.com' },
+                  ].map((site, idx) => (
+                    <Card
+                      key={idx}
+                      className="glass border-white/10 p-4 hover:border-[#00D9FF]/50 transition-all cursor-pointer group"
+                      onClick={() => setBrowserUrl(`https://${site.url}`)}
+                    >
+                      <Icon name={site.icon} size={32} className="text-[#00D9FF] mb-2 group-hover:scale-110 transition-transform" />
+                      <p className="font-semibold text-sm">{site.name}</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Assistant Panel */}
+          {showAiPanel && (
+            <div className="w-96 bg-[#0d1128] border-l border-white/10 flex flex-col">
+              <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center">
+                    <Icon name="Sparkles" size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">AI Ассистент</h3>
+                    <p className="text-xs text-gray-400">Готов помочь</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAiPanel(false)}
+                  className="hover:bg-white/5 rounded p-1 transition-colors"
+                >
+                  <Icon name="X" size={18} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {aiMessages.length === 0 ? (
+                  <div className="text-center py-12 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto">
+                      <Icon name="Sparkles" size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-2">Чем могу помочь?</h4>
+                      <p className="text-sm text-gray-400">Задайте любой вопрос</p>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        'Найди информацию о...',
+                        'Объясни что такое...',
+                        'Помоги с...',
+                        'Переведи текст...'
+                      ].map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setAiInput(suggestion)}
+                          className="block w-full text-left px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  aiMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                      {msg.role === 'ai' && (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center flex-shrink-0">
+                          <Icon name="Sparkles" size={16} />
+                        </div>
+                      )}
+                      <div className={`px-4 py-2 rounded-2xl max-w-[85%] ${
+                        msg.role === 'ai'
+                          ? 'bg-white/5 border border-white/10'
+                          : 'bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6]'
+                      }`}>
+                        <p className="text-sm">{msg.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-4 border-t border-white/10">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Спросите что-нибудь..."
+                    value={aiInput}
+                    onChange={(e) => setAiInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAiSend()}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#00D9FF] transition-colors"
+                  />
+                  <Button
+                    onClick={handleAiSend}
+                    className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 border-0 h-10 w-10 p-0"
+                  >
+                    <Icon name="Send" size={16} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] via-[#1a1f3a] to-[#0A0E27] text-white">
@@ -346,155 +681,6 @@ export default function Index() {
           </div>
         </div>
       </footer>
-
-      {showInstaller && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <Card className="glass border-[#00D9FF]/30 p-8 max-w-2xl w-full animate-scale-in">
-            {!browserOpen ? (
-              <>
-                <div className="text-center mb-8">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-4 glow-border">
-                    <Icon name="Download" size={40} className="text-white" />
-                  </div>
-                  <h2 className="text-3xl font-bold mb-2">
-                    {installing ? 'Установка NovaBrowser' : installed ? 'Установка завершена!' : 'Готов к установке'}
-                  </h2>
-                  <p className="text-gray-400">
-                    {installing ? 'Пожалуйста, подождите...' : installed ? 'Браузер успешно установлен' : 'Начните установку'}
-                  </p>
-                </div>
-
-                {installing && (
-                  <div className="space-y-4 mb-6">
-                    <Progress value={installProgress} className="h-2" />
-                    <div className="flex justify-between text-sm text-gray-400">
-                      <span>Прогресс установки</span>
-                      <span>{installProgress}%</span>
-                    </div>
-                    <div className="space-y-2 text-sm text-gray-400">
-                      {installProgress > 10 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Проверка системы</div>}
-                      {installProgress > 30 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Распаковка файлов</div>}
-                      {installProgress > 60 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Установка компонентов</div>}
-                      {installProgress > 90 && <div className="flex items-center gap-2"><Icon name="Check" size={16} className="text-green-500" /> Настройка браузера</div>}
-                    </div>
-                  </div>
-                )}
-
-                {installed && (
-                  <div className="text-center">
-                    <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                      <Icon name="CheckCircle2" size={40} className="text-green-500" />
-                    </div>
-                    <p className="text-lg text-gray-300 mb-4">Браузер открывается...</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center">
-                      <Icon name="Sparkles" size={20} className="text-white" />
-                    </div>
-                    <span className="text-xl font-bold">NovaBrowser</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500 cursor-pointer" onClick={() => setBrowserOpen(false)}></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 bg-white/5 rounded-xl p-3 mb-4">
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="text-white"
-                    onClick={() => setBrowserUrl('https://google.com')}
-                  >
-                    <Icon name="Home" size={18} />
-                  </Button>
-                  <Button size="sm" variant="ghost" className="text-white">
-                    <Icon name="RefreshCw" size={18} />
-                  </Button>
-                  <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-lg px-4 py-2">
-                    <Icon name="Lock" size={16} className="text-green-500" />
-                    <input
-                      type="text"
-                      value={browserUrl}
-                      onChange={(e) => setBrowserUrl(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleBrowserNavigate()}
-                      className="flex-1 bg-transparent outline-none text-sm"
-                    />
-                  </div>
-                  <Button 
-                    size="sm" 
-                    className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:opacity-90 border-0"
-                  >
-                    <Icon name="Sparkles" size={18} />
-                  </Button>
-                </div>
-
-                <div className="bg-white/5 rounded-xl p-8 min-h-[400px]">
-                  <div className="max-w-xl mx-auto text-center space-y-6">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-6">
-                      <Icon name="Sparkles" size={48} className="text-white" />
-                    </div>
-                    <h1 className="text-4xl font-bold">Добро пожаловать в NovaBrowser</h1>
-                    <p className="text-xl text-gray-400">Ваш умный браузер со встроенным AI-ассистентом готов к работе</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 pt-6">
-                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
-                        <Icon name="Bookmark" size={32} className="text-[#00D9FF] mb-2" />
-                        <h3 className="font-semibold">Закладки</h3>
-                      </Card>
-                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
-                        <Icon name="History" size={32} className="text-[#8B5CF6] mb-2" />
-                        <h3 className="font-semibold">История</h3>
-                      </Card>
-                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
-                        <Icon name="Settings" size={32} className="text-[#00D9FF] mb-2" />
-                        <h3 className="font-semibold">Настройки</h3>
-                      </Card>
-                      <Card className="glass border-white/10 p-4 cursor-pointer hover:border-[#00D9FF]/50 transition-all">
-                        <Icon name="Shield" size={32} className="text-[#8B5CF6] mb-2" />
-                        <h3 className="font-semibold">Защита</h3>
-                      </Card>
-                    </div>
-
-                    <div className="pt-6">
-                      <div className="flex items-center gap-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#8B5CF6]/10 border border-[#00D9FF]/30 rounded-xl p-4">
-                        <Icon name="Sparkles" size={24} className="text-[#00D9FF]" />
-                        <div className="text-left flex-1">
-                          <p className="font-semibold">AI-ассистент активен</p>
-                          <p className="text-sm text-gray-400">Нажмите Ctrl+K для быстрого доступа</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4">
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="glass border-[#00D9FF] text-white">
-                      <Icon name="Plus" size={16} className="mr-1" />
-                      Новая вкладка
-                    </Button>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="glass border-red-500 text-red-500 hover:bg-red-500/10"
-                    onClick={() => setShowInstaller(false)}
-                  >
-                    Закрыть браузер
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
     </div>
   );
 }
