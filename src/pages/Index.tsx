@@ -13,7 +13,8 @@ export default function Index() {
     { role: 'ai', text: 'Привет! Я встроенный AI-ассистент. Чем могу помочь?' }
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [browserUrl, setBrowserUrl] = useState('https://google.com');
+  const [browserUrl, setBrowserUrl] = useState('nova://newtab');
+  const [currentPage, setCurrentPage] = useState('newtab');
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -61,6 +62,42 @@ export default function Index() {
     };
     setTabs([...tabs.map(t => ({...t, active: false})), newTab]);
     setActiveTab(newTab.id);
+    setBrowserUrl('nova://newtab');
+    setCurrentPage('newtab');
+  };
+
+  const navigateToUrl = (url: string) => {
+    setBrowserUrl(url);
+    
+    if (url.includes('google.com') || url === 'google') {
+      setCurrentPage('google');
+      const activeTabData = tabs.find(t => t.id === activeTab);
+      if (activeTabData) {
+        setTabs(tabs.map(t => t.id === activeTab ? {...t, title: 'Google', url: 'https://google.com'} : t));
+      }
+    } else if (url.includes('youtube.com') || url === 'youtube') {
+      setCurrentPage('youtube');
+      const activeTabData = tabs.find(t => t.id === activeTab);
+      if (activeTabData) {
+        setTabs(tabs.map(t => t.id === activeTab ? {...t, title: 'YouTube', url: 'https://youtube.com'} : t));
+      }
+    } else if (url.includes('github.com') || url === 'github') {
+      setCurrentPage('github');
+      const activeTabData = tabs.find(t => t.id === activeTab);
+      if (activeTabData) {
+        setTabs(tabs.map(t => t.id === activeTab ? {...t, title: 'GitHub', url: 'https://github.com'} : t));
+      }
+    } else if (url.includes('chat.openai.com') || url === 'chatgpt') {
+      setCurrentPage('chatgpt');
+      const activeTabData = tabs.find(t => t.id === activeTab);
+      if (activeTabData) {
+        setTabs(tabs.map(t => t.id === activeTab ? {...t, title: 'ChatGPT', url: 'https://chat.openai.com'} : t));
+      }
+    } else if (url === 'nova://newtab') {
+      setCurrentPage('newtab');
+    } else {
+      setCurrentPage('external');
+    }
   };
 
   const closeTab = (id: number) => {
@@ -82,16 +119,45 @@ export default function Index() {
     setAiInput('');
     setAiMessages([...aiMessages, { role: 'user', text: userMessage }]);
     
-    setTimeout(() => {
+    const lowerMessage = userMessage.toLowerCase();
+    let response = '';
+    
+    if (lowerMessage.includes('привет') || lowerMessage.includes('здравствуй')) {
+      response = 'Привет! Я AI-ассистент NovaBrowser. Могу помочь с поиском информации, ответить на вопросы, открыть сайты. Что вас интересует?';
+    } else if (lowerMessage.includes('открой') && lowerMessage.includes('google')) {
+      response = 'Открываю Google для вас...';
+      setTimeout(() => navigateToUrl('google'), 500);
+    } else if (lowerMessage.includes('открой') && lowerMessage.includes('youtube')) {
+      response = 'Открываю YouTube...';
+      setTimeout(() => navigateToUrl('youtube'), 500);
+    } else if (lowerMessage.includes('открой') && lowerMessage.includes('github')) {
+      response = 'Открываю GitHub...';
+      setTimeout(() => navigateToUrl('github'), 500);
+    } else if (lowerMessage.includes('что ты умеешь') || lowerMessage.includes('что можешь')) {
+      response = 'Я могу:\n• Отвечать на ваши вопросы\n• Открывать сайты (Google, YouTube, GitHub, ChatGPT)\n• Помогать с поиском информации\n• Анализировать контент страниц\n• Переводить тексты\n• И многое другое! Просто спросите.';
+    } else if (lowerMessage.includes('как дела') || lowerMessage.includes('как ты')) {
+      response = 'Отлично! Я всегда готов помочь вам. Чем займёмся?';
+    } else if (lowerMessage.includes('спасибо') || lowerMessage.includes('благодар')) {
+      response = 'Пожалуйста! Обращайтесь, если понадобится помощь.';
+    } else if (lowerMessage.includes('погода')) {
+      response = 'Для получения точного прогноза погоды рекомендую открыть специализированный сайт. Могу открыть для вас поисковик?';
+    } else if (lowerMessage.includes('перевод') || lowerMessage.includes('переведи')) {
+      response = 'Я могу помочь с переводом! Напишите текст и на какой язык нужно перевести.';
+    } else if (lowerMessage.includes('найди') || lowerMessage.includes('поиск')) {
+      response = 'Ищу информацию по вашему запросу... Рекомендую использовать Google для более подробного поиска. Открыть?';
+    } else {
       const responses = [
-        'Конечно! Я могу помочь вам с этим вопросом. На основе анализа текущей страницы...',
-        'Отличный вопрос! Давайте я найду для вас актуальную информацию...',
-        'Я проанализировал контент и могу предложить следующее решение...',
-        'Интересная задача! Вот что я нашел по вашему запросу...'
+        `Интересный вопрос о "${userMessage}". Проанализировав запрос, могу сказать, что это требует дополнительного исследования. Хотите, я открою поисковик?`,
+        `По поводу "${userMessage}" - я могу помочь найти информацию. Какой именно аспект вас интересует?`,
+        `Отличный вопрос! Для ответа на "${userMessage}" мне нужно немного больше контекста. Уточните, пожалуйста.`,
+        `Я готов помочь с "${userMessage}". Это связано с веб-поиском, работой с сайтами или чем-то другим?`
       ];
-      const response = responses[Math.floor(Math.random() * responses.length)];
+      response = responses[Math.floor(Math.random() * responses.length)];
+    }
+    
+    setTimeout(() => {
       setAiMessages(prev => [...prev, { role: 'ai', text: response }]);
-    }, 800);
+    }, 300);
   };
 
   useEffect(() => {
@@ -193,6 +259,12 @@ export default function Index() {
                 type="text"
                 value={browserUrl}
                 onChange={(e) => setBrowserUrl(e.target.value)}
+                onKeyPress={(e) => { 
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    navigateToUrl(browserUrl);
+                  }
+                }}
                 placeholder="Введите URL или поисковый запрос..."
                 className="flex-1 bg-transparent outline-none text-sm"
               />
@@ -227,73 +299,90 @@ export default function Index() {
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Page Content */}
-          <div className="flex-1 bg-[#0A0E27] overflow-auto">
-            <div className="max-w-5xl mx-auto px-8 py-16">
-              <div className="text-center space-y-8">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-8 glow-border">
-                  <Icon name="Sparkles" size={64} className="text-white" />
-                </div>
-                
-                <h1 className="text-5xl font-bold mb-4">
-                  Добро пожаловать в
-                  <span className="block bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] bg-clip-text text-transparent mt-2">
-                    NovaBrowser
-                  </span>
-                </h1>
-                
-                <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                  Ваш умный браузер со встроенным AI-ассистентом готов к работе
-                </p>
+          <div className="flex-1 bg-[#0A0E27] overflow-hidden">
+            {currentPage === 'newtab' ? (
+              <div className="h-full overflow-auto">
+                <div className="max-w-5xl mx-auto px-8 py-16">
+                  <div className="text-center space-y-8">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center mx-auto mb-8 glow-border">
+                      <Icon name="Sparkles" size={64} className="text-white" />
+                    </div>
+                    
+                    <h1 className="text-5xl font-bold mb-4">
+                      Добро пожаловать в
+                      <span className="block bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] bg-clip-text text-transparent mt-2">
+                        NovaBrowser
+                      </span>
+                    </h1>
+                    
+                    <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                      Ваш умный браузер со встроенным AI-ассистентом готов к работе
+                    </p>
 
-                <div className="grid md:grid-cols-3 gap-4 pt-8 max-w-3xl mx-auto">
-                  <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
-                    <Icon name="Bookmark" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
-                    <h3 className="font-bold mb-2">Закладки</h3>
-                    <p className="text-sm text-gray-400">Быстрый доступ к любимым сайтам</p>
-                  </Card>
-                  
-                  <Card className="glass border-white/10 p-6 hover:border-[#8B5CF6]/50 transition-all cursor-pointer group">
-                    <Icon name="History" size={40} className="text-[#8B5CF6] mb-4 group-hover:scale-110 transition-transform" />
-                    <h3 className="font-bold mb-2">История</h3>
-                    <p className="text-sm text-gray-400">Все ваши посещения</p>
-                  </Card>
-                  
-                  <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
-                    <Icon name="Settings" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
-                    <h3 className="font-bold mb-2">Настройки</h3>
-                    <p className="text-sm text-gray-400">Персонализация браузера</p>
-                  </Card>
-                </div>
+                    <div className="grid md:grid-cols-3 gap-4 pt-8 max-w-3xl mx-auto">
+                      <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
+                        <Icon name="Bookmark" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold mb-2">Закладки</h3>
+                        <p className="text-sm text-gray-400">Быстрый доступ к любимым сайтам</p>
+                      </Card>
+                      
+                      <Card className="glass border-white/10 p-6 hover:border-[#8B5CF6]/50 transition-all cursor-pointer group">
+                        <Icon name="History" size={40} className="text-[#8B5CF6] mb-4 group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold mb-2">История</h3>
+                        <p className="text-sm text-gray-400">Все ваши посещения</p>
+                      </Card>
+                      
+                      <Card className="glass border-white/10 p-6 hover:border-[#00D9FF]/50 transition-all cursor-pointer group">
+                        <Icon name="Settings" size={40} className="text-[#00D9FF] mb-4 group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold mb-2">Настройки</h3>
+                        <p className="text-sm text-gray-400">Персонализация браузера</p>
+                      </Card>
+                    </div>
 
-                <div className="pt-8">
-                  <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#8B5CF6]/10 border border-[#00D9FF]/30 rounded-xl p-6">
-                    <Icon name="Sparkles" size={32} className="text-[#00D9FF]" />
-                    <div className="text-left">
-                      <p className="font-bold text-lg">AI-ассистент активен</p>
-                      <p className="text-sm text-gray-400">Нажмите на кнопку AI в адресной строке или Ctrl+K</p>
+                    <div className="pt-8">
+                      <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#00D9FF]/10 to-[#8B5CF6]/10 border border-[#00D9FF]/30 rounded-xl p-6">
+                        <Icon name="Sparkles" size={32} className="text-[#00D9FF]" />
+                        <div className="text-left">
+                          <p className="font-bold text-lg">AI-ассистент активен</p>
+                          <p className="text-sm text-gray-400">Нажмите на кнопку AI в адресной строке или Ctrl+K</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
+                      {[
+                        { name: 'Google', icon: 'Search', url: 'google' },
+                        { name: 'YouTube', icon: 'Youtube', url: 'youtube' },
+                        { name: 'GitHub', icon: 'Github', url: 'github' },
+                        { name: 'ChatGPT', icon: 'MessageSquare', url: 'chatgpt' },
+                      ].map((site, idx) => (
+                        <Card
+                          key={idx}
+                          className="glass border-white/10 p-4 hover:border-[#00D9FF]/50 transition-all cursor-pointer group"
+                          onClick={() => navigateToUrl(site.url)}
+                        >
+                          <Icon name={site.icon} size={32} className="text-[#00D9FF] mb-2 group-hover:scale-110 transition-transform" />
+                          <p className="font-semibold text-sm">{site.name}</p>
+                        </Card>
+                      ))}
                     </div>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
-                  {[
-                    { name: 'Google', icon: 'Search', url: 'google.com' },
-                    { name: 'YouTube', icon: 'Youtube', url: 'youtube.com' },
-                    { name: 'GitHub', icon: 'Github', url: 'github.com' },
-                    { name: 'ChatGPT', icon: 'MessageSquare', url: 'chat.openai.com' },
-                  ].map((site, idx) => (
-                    <Card
-                      key={idx}
-                      className="glass border-white/10 p-4 hover:border-[#00D9FF]/50 transition-all cursor-pointer group"
-                      onClick={() => setBrowserUrl(`https://${site.url}`)}
-                    >
-                      <Icon name={site.icon} size={32} className="text-[#00D9FF] mb-2 group-hover:scale-110 transition-transform" />
-                      <p className="font-semibold text-sm">{site.name}</p>
-                    </Card>
-                  ))}
-                </div>
               </div>
-            </div>
+            ) : (
+              <iframe
+                src={
+                  currentPage === 'google' ? 'https://www.google.com/webhp?igu=1' :
+                  currentPage === 'youtube' ? 'https://www.youtube.com' :
+                  currentPage === 'github' ? 'https://github.com' :
+                  currentPage === 'chatgpt' ? 'https://chat.openai.com' :
+                  browserUrl
+                }
+                className="w-full h-full border-0"
+                title="Browser Content"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+              />
+            )}
           </div>
 
           {/* AI Assistant Panel */}
@@ -329,14 +418,36 @@ export default function Index() {
                     </div>
                     <div className="space-y-2">
                       {[
-                        'Найди информацию о...',
-                        'Объясни что такое...',
-                        'Помоги с...',
-                        'Переведи текст...'
+                        'Открой Google',
+                        'Открой YouTube',
+                        'Что ты умеешь?',
+                        'Помоги найти информацию'
                       ].map((suggestion, idx) => (
                         <button
                           key={idx}
-                          onClick={() => setAiInput(suggestion)}
+                          onClick={() => {
+                            const msg = suggestion;
+                            setAiMessages([...aiMessages, { role: 'user', text: msg }]);
+                            
+                            const lowerMessage = msg.toLowerCase();
+                            let response = '';
+                            
+                            if (lowerMessage.includes('открой') && lowerMessage.includes('google')) {
+                              response = 'Открываю Google для вас...';
+                              setTimeout(() => navigateToUrl('google'), 500);
+                            } else if (lowerMessage.includes('открой') && lowerMessage.includes('youtube')) {
+                              response = 'Открываю YouTube...';
+                              setTimeout(() => navigateToUrl('youtube'), 500);
+                            } else if (lowerMessage.includes('что ты умеешь')) {
+                              response = 'Я могу:\\n• Отвечать на ваши вопросы\\n• Открывать сайты (Google, YouTube, GitHub, ChatGPT)\\n• Помогать с поиском информации\\n• Анализировать контент страниц\\n• Переводить тексты\\n• И многое другое! Просто спросите.';
+                            } else {
+                              response = 'Конечно! Чем именно я могу вам помочь?';
+                            }
+                            
+                            setTimeout(() => {
+                              setAiMessages(prev => [...prev, { role: 'ai', text: response }]);
+                            }, 300);
+                          }}
                           className="block w-full text-left px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors"
                         >
                           {suggestion}
